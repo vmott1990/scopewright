@@ -2,7 +2,7 @@
 
 A small tool that turns raw discovery-call notes into a first-draft Statement of Work — numbered clauses, not a chat transcript.
 
-**[Live demo →](#)** *(replace with your published Claude.ai link)*
+**[Live demo →]
 
 ## Why I built this
 

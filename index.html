@@ -31,7 +31,6 @@
   }
   .wrap{max-width:1180px;margin:0 auto;padding:0 24px 64px;}
 
-  /* Letterhead */
   .letterhead{
     background:var(--navy-deep);
     color:var(--paper);
@@ -73,7 +72,6 @@
 
   .wrap > .letterhead{max-width:none;margin-left:calc(-50vw + 50%);margin-right:calc(-50vw + 50%);padding-left:calc(50vw - 50% + 24px);padding-right:calc(50vw - 50% + 24px);}
 
-  /* Layout */
   .grid{
     display:grid;
     grid-template-columns: 1fr 1.25fr;
@@ -90,7 +88,6 @@
     box-shadow: 0 1px 2px rgba(28,43,58,0.04);
   }
 
-  /* Left: intake pad */
   .pad{padding:26px 26px 24px;}
   .pad .eyebrow{color:var(--ink-soft);}
   .field-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;}
@@ -169,9 +166,9 @@
     font-size:13px;
     color:var(--redline);
     font-family:var(--font-body);
+    line-height:1.5;
   }
 
-  /* Right: document */
   .doc-outer{position:relative;}
   .doc{
     padding:38px 40px 42px;
@@ -223,6 +220,7 @@
     letter-spacing:0.05em;
     margin-bottom:26px;
   }
+  .doc-meta .demo-flag{color:var(--brass);}
 
   .clause{margin-bottom:22px;opacity:0;transform:translateY(6px);animation:rise .4s ease forwards;}
   @media (prefers-reduced-motion: reduce){.clause{animation:none;opacity:1;transform:none;}}
@@ -306,7 +304,6 @@
 <div class="wrap">
   <div class="grid">
 
-    <!-- Left: intake -->
     <div class="card pad">
       <p class="eyebrow">Engagement Details</p>
       <div class="field-row">
@@ -323,7 +320,7 @@
       <label class="notes-label" for="notes">Discovery Notes</label>
       <textarea id="notes" placeholder="Paste your call notes, transcript excerpt, or bullet points here. Rough is fine &mdash; include whatever you know about goals, systems, constraints, timeline, or stakeholders."></textarea>
 
-      <p class="hint">Scopewright won't invent numbers, names, or commitments that aren't in your notes &mdash; thin sections come back flagged as <em>to be confirmed</em> rather than guessed.</p>
+      <p class="hint">Scopewright won't invent numbers, names, or commitments that aren't in your notes &mdash; thin sections come back flagged as <em>to be confirmed</em> rather than guessed. This hosted version calls Claude live where possible; where it can't reach the API directly, it falls back to a saved example draft.</p>
 
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
         <button class="primary" id="generateBtn" onclick="draftSOW()">
@@ -334,7 +331,6 @@
       <div class="error-msg" id="errorMsg" style="display:none;"></div>
     </div>
 
-    <!-- Right: document -->
     <div class="card doc-outer">
       <div class="doc" id="docArea">
         <div class="doc-empty" id="emptyState">
@@ -356,11 +352,7 @@
 <script>
 let lastDocText = "";
 
-function loadExample(){
-  document.getElementById('clientName').value = "Aurora Protocol";
-  document.getElementById('engName').value = "Pre-TGE Tokenomics & Market Maker Advisory";
-  document.getElementById('notes').value =
-`Aurora Protocol - seed round closed, targeting TGE in roughly 14 weeks. No in-house tokenomics or treasury function yet.
+const EXAMPLE_NOTES = `Aurora Protocol - seed round closed, targeting TGE in roughly 14 weeks. No in-house tokenomics or treasury function yet.
 
 Founders want a demand-driver workshop - current draft tokenomics doc has supply and emissions mapped out but no clearly articulated utility beyond governance voting.
 
@@ -373,6 +365,62 @@ Need a budget and cashflow model covering roughly 18 months of runway post-TGE.
 Legal status of the token is still unresolved in a couple of key jurisdictions - flagged as a risk, not yet actioned.
 
 Community team wants a one-pager summarizing the tokenomics before public sale opens. Internal team is stretched thin and nervous about running all of this without outside support.`;
+
+const DEMO_RESULT = {
+  overview: "Aurora Protocol is preparing for a token generation event (TGE) targeted in approximately 14 weeks. The team needs end-to-end advisory support spanning tokenomics refinement, market maker selection, exchange listing strategy, cap table and vesting management, financial planning, and regulatory risk triage ahead of a public sale.",
+  objectives: [
+    "Strengthen the tokenomics model with clearly defined demand drivers beyond governance voting.",
+    "Select 2-3 market makers through a competitive RFQ process ahead of TGE.",
+    "Establish a realistic exchange listing strategy aligned to expected fully diluted valuation (FDV).",
+    "Consolidate vesting schedules into a structured cap table ahead of the next fundraising conversation.",
+    "Produce an 18-month post-TGE budget and cashflow model.",
+    "Surface and triage open regulatory questions on token classification."
+  ],
+  scope_in: [
+    "Facilitated demand-driver workshop and revised tokenomics documentation.",
+    "Market maker RFQ process design, distribution, and evaluation support for 2-3 shortlisted firms.",
+    "Exchange listing tier assessment based on projected FDV and comparable recent launches.",
+    "Migration of existing vesting data into a structured cap table format.",
+    "18-month budget and cashflow model covering post-TGE runway.",
+    "Community-facing tokenomics one-pager for the public sale."
+  ],
+  deliverables: [
+    "Revised tokenomics document with articulated demand drivers.",
+    "Market maker RFQ pack and comparison scorecard.",
+    "Exchange listing tier recommendation memo.",
+    "Structured cap table with vesting schedules.",
+    "18-month budget and cashflow model (spreadsheet).",
+    "Tokenomics one-pager for community distribution."
+  ],
+  assumptions: [
+    "Aurora Protocol will provide existing tokenomics drafts, cap table spreadsheet, and financial data within the first week of engagement.",
+    "TGE timeline of approximately 14 weeks remains fixed unless jointly revised.",
+    "Legal review of token classification is handled by Aurora Protocol's own counsel; this engagement flags risk but does not provide legal advice."
+  ],
+  timeline: [
+    {phase:"Discovery & Tokenomics Workshop", duration:"Weeks 1-2", description:"Review existing tokenomics draft, run demand-driver workshop, align on objectives."},
+    {phase:"Market Maker RFQ", duration:"Weeks 2-5", description:"Distribute RFQ, collect and evaluate quotes, shortlist 2-3 firms."},
+    {phase:"Listings & Cap Table", duration:"Weeks 4-8", description:"Assess exchange listing tiers, migrate vesting data into structured cap table."},
+    {phase:"Financial Modeling", duration:"Weeks 6-10", description:"Build 18-month budget and cashflow model."},
+    {phase:"Pre-Launch Readiness", duration:"Weeks 10-14", description:"Finalize community one-pager, confirm market maker and listing commitments ahead of TGE."}
+  ],
+  out_of_scope: [
+    "Legal opinions on token classification or securities status.",
+    "Smart contract development or audit.",
+    "Direct negotiation or execution of exchange listing agreements (advisory support only)."
+  ],
+  success_criteria: [
+    "Tokenomics documentation reflects clearly articulated demand drivers ahead of public sale.",
+    "2-3 market makers selected via competitive RFQ with signed terms in progress by TGE minus 4 weeks.",
+    "Cap table fully reconciled and reviewed by the board.",
+    "Budget and cashflow model approved internally before public sale opens."
+  ]
+};
+
+function loadExample(){
+  document.getElementById('clientName').value = "Aurora Protocol";
+  document.getElementById('engName').value = "Pre-TGE Tokenomics & Market Maker Advisory";
+  document.getElementById('notes').value = EXAMPLE_NOTES;
   document.getElementById('notes').focus();
 }
 
@@ -395,6 +443,8 @@ async function draftSOW(){
   btn.disabled = true;
   btnLabel.textContent = "Drafting\u2026";
 
+  const isExampleScenario = notes === EXAMPLE_NOTES.trim();
+
   const systemPrompt = `You are a senior professional services engagement lead drafting a first-pass Statement of Work outline from raw discovery notes. Respond ONLY with minified JSON, no markdown fences, no preamble, no trailing commentary, matching exactly this schema:
 {"overview":"string","objectives":["string"],"scope_in":["string"],"deliverables":["string"],"assumptions":["string"],"timeline":[{"phase":"string","duration":"string","description":"string"}],"out_of_scope":["string"],"success_criteria":["string"]}
 Rules: Use only what is stated or reasonably implied in the notes. Where a section has no basis in the notes, write a single item: "To be confirmed with client." Never invent client names, dollar figures, headcounts, or dates that are not present in the notes. Keep each item concrete and one to two sentences.`;
@@ -414,22 +464,27 @@ Rules: Use only what is stated or reasonably implied in the notes. Where a secti
     });
 
     if(!response.ok){
-      throw new Error("The API returned an error (status " + response.status + ").");
+      throw new Error("api-unreachable");
     }
 
     const data = await response.json();
     const textBlock = (data.content || []).find(b => b.type === "text");
     if(!textBlock){
-      throw new Error("No draft came back \u2014 try again.");
+      throw new Error("api-unreachable");
     }
 
     const cleaned = textBlock.text.replace(/```json|```/g, "").trim();
     const sow = JSON.parse(cleaned);
-    renderDoc(sow, client, engagement);
+    renderDoc(sow, client, engagement, false);
 
   }catch(err){
-    errorEl.textContent = "Couldn't generate a draft. " + err.message + " Try again.";
-    errorEl.style.display = 'block';
+    if(isExampleScenario){
+      await new Promise(r => setTimeout(r, 500));
+      renderDoc(DEMO_RESULT, client, engagement, true);
+    } else {
+      errorEl.textContent = "This hosted demo can't reach a live model without a backend connection. Click \u201cLoad example\u201d above to see a real generated draft, or check the source on GitHub to see how the live version works.";
+      errorEl.style.display = 'block';
+    }
   }finally{
     btn.disabled = false;
     btnLabel.textContent = "Draft the SOW";
@@ -442,18 +497,18 @@ function esc(s){
   return d.innerHTML;
 }
 
-function renderDoc(sow, client, engagement){
+function renderDoc(sow, client, engagement, isDemo){
   const title = engagement ? engagement : "Statement of Work";
   const metaParts = [];
-  if(client) metaParts.push(client);
-  metaParts.push(new Date().toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'}));
+  if(client) metaParts.push(esc(client));
+  metaParts.push(esc(new Date().toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'})));
+  if(isDemo) metaParts.push('<span class="demo-flag">Saved example output</span>');
 
   let html = `<div class="stamp">Draft</div>`;
   html += `<h2 class="doc-title">${esc(title)}</h2>`;
-  html += `<p class="doc-meta">${metaParts.map(esc).join(' &nbsp;&middot;&nbsp; ')}</p>`;
+  html += `<p class="doc-meta">${metaParts.join(' &nbsp;&middot;&nbsp; ')}</p>`;
 
   let n = 1;
-  const delay = i => (i*0.05).toFixed(2)+'s';
   let ci = 0;
 
   html += clauseBlock(n++, "Overview", `<p>${esc(sow.overview || "To be confirmed with client.")}</p>`, ci++);
@@ -468,7 +523,7 @@ function renderDoc(sow, client, engagement){
   document.getElementById('docArea').innerHTML = html;
   document.getElementById('docActions').style.display = 'flex';
 
-  lastDocText = buildPlainText(title, metaParts, sow);
+  lastDocText = buildPlainText(title, client, sow);
 }
 
 function clauseBlock(num, label, innerHtml, idx, isTimeline){
@@ -490,10 +545,10 @@ function timelineBlock(rows){
   </tbody></table>`;
 }
 
-function buildPlainText(title, metaParts, sow){
+function buildPlainText(title, client, sow){
   const lines = [];
   lines.push(title.toUpperCase());
-  lines.push(metaParts.join(' | '));
+  if(client) lines.push(client);
   lines.push('='.repeat(50));
   lines.push('');
   const section = (num, label, items, isPara) => {

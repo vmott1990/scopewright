@@ -287,3 +287,260 @@
     margin-top:40px;
     font-family:var(--font-mono);
     font-size:11px;
+    color:var(--ink-soft);
+    letter-spacing:0.03em;
+  }
+</style>
+</head>
+<body>
+<div class="letterhead-outer">
+  <div class="letterhead">
+    <div class="wrap" style="padding:0;">
+      <p class="eyebrow">Services Engagement Tool</p>
+      <h1>Scopewright</h1>
+      <p>Paste raw discovery or call notes. Get back a numbered, first-draft Statement of Work &mdash; ready to redline, not ready to sign.</p>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="grid">
+
+    <!-- Left: intake -->
+    <div class="card pad">
+      <p class="eyebrow">Engagement Details</p>
+      <div class="field-row">
+        <div>
+          <label for="clientName">Client</label>
+          <input type="text" id="clientName" placeholder="e.g. Meridian Retail Group">
+        </div>
+        <div>
+          <label for="engName">Engagement</label>
+          <input type="text" id="engName" placeholder="e.g. Data Platform Migration">
+        </div>
+      </div>
+
+      <label class="notes-label" for="notes">Discovery Notes</label>
+      <textarea id="notes" placeholder="Paste your call notes, transcript excerpt, or bullet points here. Rough is fine &mdash; include whatever you know about goals, systems, constraints, timeline, or stakeholders."></textarea>
+
+      <p class="hint">Scopewright won't invent numbers, names, or commitments that aren't in your notes &mdash; thin sections come back flagged as <em>to be confirmed</em> rather than guessed.</p>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+        <button class="primary" id="generateBtn" onclick="draftSOW()">
+          <span id="btnLabel">Draft the SOW</span> <span class="arrow">&rarr;</span>
+        </button>
+        <button class="ghost-btn" type="button" onclick="loadExample()">Load example (token launch)</button>
+      </div>
+      <div class="error-msg" id="errorMsg" style="display:none;"></div>
+    </div>
+
+    <!-- Right: document -->
+    <div class="card doc-outer">
+      <div class="doc" id="docArea">
+        <div class="doc-empty" id="emptyState">
+          <div class="glyph">§</div>
+          <p>Your draft will appear here as numbered clauses &mdash; overview, scope, deliverables, assumptions, timeline, and what's explicitly out.</p>
+        </div>
+      </div>
+      <div class="doc-actions" id="docActions" style="display:none;">
+        <button class="ghost-btn" onclick="copyDoc()">Copy as text</button>
+        <button class="ghost-btn" onclick="downloadDoc()">Download .txt</button>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>Draft output only &mdash; review before it leaves the building. Built with Claude.</footer>
+</div>
+
+<script>
+let lastDocText = "";
+
+function loadExample(){
+  document.getElementById('clientName').value = "Aurora Protocol";
+  document.getElementById('engName').value = "Pre-TGE Tokenomics & Market Maker Advisory";
+  document.getElementById('notes').value =
+`Aurora Protocol - seed round closed, targeting TGE in roughly 14 weeks. No in-house tokenomics or treasury function yet.
+
+Founders want a demand-driver workshop - current draft tokenomics doc has supply and emissions mapped out but no clearly articulated utility beyond governance voting.
+
+Need to run a competitive RFQ across market makers ahead of TGE and shortlist 2-3 for quotes. Also need help figuring out realistic exchange listing tiers given their expected FDV - unclear if tier-1 venues are realistic yet.
+
+Vesting schedules for team and investors currently live in a spreadsheet, no proper cap table tool. Board has asked for this to be cleaned up before the next raise conversation.
+
+Need a budget and cashflow model covering roughly 18 months of runway post-TGE.
+
+Legal status of the token is still unresolved in a couple of key jurisdictions - flagged as a risk, not yet actioned.
+
+Community team wants a one-pager summarizing the tokenomics before public sale opens. Internal team is stretched thin and nervous about running all of this without outside support.`;
+  document.getElementById('notes').focus();
+}
+
+async function draftSOW(){
+  const notes = document.getElementById('notes').value.trim();
+  const client = document.getElementById('clientName').value.trim();
+  const engagement = document.getElementById('engName').value.trim();
+  const errorEl = document.getElementById('errorMsg');
+  const btn = document.getElementById('generateBtn');
+  const btnLabel = document.getElementById('btnLabel');
+
+  errorEl.style.display = 'none';
+
+  if(!notes){
+    errorEl.textContent = "Add some discovery notes first \u2014 there's nothing to draft from yet.";
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  btnLabel.textContent = "Drafting\u2026";
+
+  const systemPrompt = `You are a senior professional services engagement lead drafting a first-pass Statement of Work outline from raw discovery notes. Respond ONLY with minified JSON, no markdown fences, no preamble, no trailing commentary, matching exactly this schema:
+{"overview":"string","objectives":["string"],"scope_in":["string"],"deliverables":["string"],"assumptions":["string"],"timeline":[{"phase":"string","duration":"string","description":"string"}],"out_of_scope":["string"],"success_criteria":["string"]}
+Rules: Use only what is stated or reasonably implied in the notes. Where a section has no basis in the notes, write a single item: "To be confirmed with client." Never invent client names, dollar figures, headcounts, or dates that are not present in the notes. Keep each item concrete and one to two sentences.`;
+
+  const userMsg = `Client: ${client || "(not specified)"}\nEngagement: ${engagement || "(not specified)"}\n\nDiscovery notes:\n${notes}`;
+
+  try{
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userMsg }]
+      })
+    });
+
+    if(!response.ok){
+      throw new Error("The API returned an error (status " + response.status + ").");
+    }
+
+    const data = await response.json();
+    const textBlock = (data.content || []).find(b => b.type === "text");
+    if(!textBlock){
+      throw new Error("No draft came back \u2014 try again.");
+    }
+
+    const cleaned = textBlock.text.replace(/```json|```/g, "").trim();
+    const sow = JSON.parse(cleaned);
+    renderDoc(sow, client, engagement);
+
+  }catch(err){
+    errorEl.textContent = "Couldn't generate a draft. " + err.message + " Try again.";
+    errorEl.style.display = 'block';
+  }finally{
+    btn.disabled = false;
+    btnLabel.textContent = "Draft the SOW";
+  }
+}
+
+function esc(s){
+  const d = document.createElement('div');
+  d.innerText = s;
+  return d.innerHTML;
+}
+
+function renderDoc(sow, client, engagement){
+  const title = engagement ? engagement : "Statement of Work";
+  const metaParts = [];
+  if(client) metaParts.push(client);
+  metaParts.push(new Date().toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'}));
+
+  let html = `<div class="stamp">Draft</div>`;
+  html += `<h2 class="doc-title">${esc(title)}</h2>`;
+  html += `<p class="doc-meta">${metaParts.map(esc).join(' &nbsp;&middot;&nbsp; ')}</p>`;
+
+  let n = 1;
+  const delay = i => (i*0.05).toFixed(2)+'s';
+  let ci = 0;
+
+  html += clauseBlock(n++, "Overview", `<p>${esc(sow.overview || "To be confirmed with client.")}</p>`, ci++);
+  html += clauseBlock(n++, "Objectives", listBlock(sow.objectives), ci++);
+  html += clauseBlock(n++, "Scope of Work (In Scope)", listBlock(sow.scope_in), ci++);
+  html += clauseBlock(n++, "Deliverables", listBlock(sow.deliverables), ci++);
+  html += clauseBlock(n++, "Assumptions", listBlock(sow.assumptions), ci++);
+  html += clauseBlock(n++, "Timeline &amp; Phases", timelineBlock(sow.timeline), ci++, true);
+  html += clauseBlock(n++, "Out of Scope", listBlock(sow.out_of_scope), ci++);
+  html += clauseBlock(n++, "Success Criteria", listBlock(sow.success_criteria), ci++);
+
+  document.getElementById('docArea').innerHTML = html;
+  document.getElementById('docActions').style.display = 'flex';
+
+  lastDocText = buildPlainText(title, metaParts, sow);
+}
+
+function clauseBlock(num, label, innerHtml, idx, isTimeline){
+  return `<div class="clause${isTimeline?' timeline':''}" style="animation-delay:${(idx*0.05).toFixed(2)}s">
+    <h3><span class="num">${num}.0</span> ${label}</h3>
+    ${innerHtml}
+  </div>`;
+}
+
+function listBlock(items){
+  if(!items || !items.length) return `<p>To be confirmed with client.</p>`;
+  return `<ol>${items.map((it,i)=>`<li><span class="sub-num">${i+1}.</span>${esc(it)}</li>`).join('')}</ol>`;
+}
+
+function timelineBlock(rows){
+  if(!rows || !rows.length) return `<p>To be confirmed with client.</p>`;
+  return `<table><thead><tr><th>Phase</th><th>Duration</th><th>Description</th></tr></thead><tbody>
+    ${rows.map(r=>`<tr><td>${esc(r.phase||'')}</td><td>${esc(r.duration||'')}</td><td>${esc(r.description||'')}</td></tr>`).join('')}
+  </tbody></table>`;
+}
+
+function buildPlainText(title, metaParts, sow){
+  const lines = [];
+  lines.push(title.toUpperCase());
+  lines.push(metaParts.join(' | '));
+  lines.push('='.repeat(50));
+  lines.push('');
+  const section = (num, label, items, isPara) => {
+    lines.push(`${num}.0 ${label}`);
+    if(isPara){
+      lines.push(items || "To be confirmed with client.");
+    } else if(!items || !items.length){
+      lines.push("To be confirmed with client.");
+    } else {
+      items.forEach((it,i)=>lines.push(`  ${num}.${i+1} ${it}`));
+    }
+    lines.push('');
+  };
+  section(1,"Overview", sow.overview, true);
+  section(2,"Objectives", sow.objectives);
+  section(3,"Scope of Work (In Scope)", sow.scope_in);
+  section(4,"Deliverables", sow.deliverables);
+  section(5,"Assumptions", sow.assumptions);
+  lines.push('6.0 Timeline & Phases');
+  if(sow.timeline && sow.timeline.length){
+    sow.timeline.forEach(r=>lines.push(`  - ${r.phase}: ${r.duration} \u2014 ${r.description}`));
+  } else { lines.push('  To be confirmed with client.'); }
+  lines.push('');
+  section(7,"Out of Scope", sow.out_of_scope);
+  section(8,"Success Criteria", sow.success_criteria);
+  return lines.join('\n');
+}
+
+function copyDoc(){
+  if(!lastDocText) return;
+  navigator.clipboard.writeText(lastDocText);
+  const btn = event.target;
+  const original = btn.textContent;
+  btn.textContent = "Copied";
+  setTimeout(()=>btn.textContent = original, 1400);
+}
+
+function downloadDoc(){
+  if(!lastDocText) return;
+  const blob = new Blob([lastDocText], {type:'text/plain'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'sow-draft.txt';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
